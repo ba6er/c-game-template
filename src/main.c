@@ -17,12 +17,16 @@ main(int argc, char *argv[])
   };
   // Sprites
   SpriteSource s_src[] = {
-    {"full",   "ingame", {0, 0, 80, 32}},
-    {"player", "ingame", {0, 0, 16, 16}},
+    {"brick_c", "ingame", {16, 16, 16, 16}},
+    {"brick_l", "ingame", {0,  16, 16, 16}},
+    {"brick_r", "ingame", {32, 16, 16, 16}},
+    {"plr_s",   "ingame", {0,  0,  16, 16}},
+    {"plr_w0",  "ingame", {16, 0,  16, 16}},
+    {"plr_w1",  "ingame", {32, 0,  16, 16}},
   };
   // Fonts
   FontSource f_src[] = {
-    {"font0", "font/noto_serif.ttf", 20, 0},
+    {"font0", "font/noto_serif.ttf", 28, 1},
   };
   // Audio
   AudioSource a_src[] = {

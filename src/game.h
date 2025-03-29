@@ -49,5 +49,5 @@ void game_run(int tick_rate);
 void game_free();
 
 void game_draw_sprite(const char *sprite, float x, float y, float sx, float sy, float a);
-void game_draw_text(const char *font, const char *text, float x, float y, FontDraw h, FontDraw v);
+void game_draw_text(const char *font, const char *text, float x, float y, float sx, float sy, FontDraw h, FontDraw v);
 void game_play_audio(const char *aud, int loops);

@@ -275,7 +275,6 @@ game_run(int tick_rate)
     SDL_RenderClear(renderer);
 
     scene_render(delta_time, current_time);
-    game_draw_text("font0", "Hello World!", 160, 40, FontDraw_Center, FontDraw_Center);
 
     SDL_RenderPresent(renderer);
   }
@@ -329,6 +328,11 @@ game_free()
 void
 game_draw_sprite(const char *sprite, float x, float y, float sx, float sy, float a)
 {
+  if (sprite == NULL)
+  {
+    ERROR_RETURN(, "No sprite provided!");
+  }
+
   int si = binary_search(spr_map, num_sprites, sprite);
   if (si == -1)
   {
@@ -346,8 +350,13 @@ game_draw_sprite(const char *sprite, float x, float y, float sx, float sy, float
 
 
 void
-game_draw_text(const char *font, const char *text, float x, float y, FontDraw h, FontDraw v)
+game_draw_text(const char *font, const char *text, float x, float y, float sx, float sy, FontDraw h, FontDraw v)
 {
+  if (font == NULL)
+  {
+    ERROR_RETURN(, "No font provided!");
+  }
+
   int fi = binary_search(font_map, num_fonts, font);
   if (fi == -1)
   {
@@ -379,10 +388,18 @@ game_draw_text(const char *font, const char *text, float x, float y, FontDraw h,
     offset_y /= 2;
   }
 
+  offset_x *= sx;
+  offset_y *= sy;
+
   for (size_t i = 0; text[i]; i++)
   {
     size_t ri = fi * (127 - ' ') + text[i] - ' ';
-    SDL_FRect dest = {x + offset_x, y + offset_y, font_rects[ri].w, font_rects[ri].h};
+    SDL_FRect dest = {
+      x + offset_x,
+      y + offset_y,
+      font_rects[ri].w * sx,
+      font_rects[ri].h * sy,
+    };
     SDL_RenderCopyF(renderer, fonts[fi], &font_rects[ri], &dest);
 
     offset_x += dest.w;
@@ -392,6 +409,11 @@ game_draw_text(const char *font, const char *text, float x, float y, FontDraw h,
 void
 game_play_audio(const char *aud, int loops)
 {
+  if (aud == NULL)
+  {
+    ERROR_RETURN(, "No audio provided!");
+  }
+
   int ai = binary_search(audio_map, num_audio, aud);
   if (ai == -1)
   {
