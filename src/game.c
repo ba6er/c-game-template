@@ -2,12 +2,10 @@
 #include "scene.h"
 #include "util.h"
 
-#include <SDL2/SDL_surface.h>
-#include <SDL2/SDL_ttf.h>
+#include <time.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
-
 
 static SDL_Window   *window;
 static SDL_Renderer *renderer;
@@ -25,6 +23,10 @@ static size_t      num_fonts;
 static const char  **font_map;
 static SDL_Texture **fonts;
 static SDL_Rect    *font_rects;
+
+static size_t     num_audio;
+static const char **audio_map;
+static Mix_Chunk  **audios;
 
 void
 game_init(int ww, int wh, int lw, int lh, const char *title)
@@ -78,14 +80,15 @@ game_init(int ww, int wh, int lw, int lh, const char *title)
     DEBUG_ERROR("Can't init SDL_mixer! Mix_Error:\n%s", Mix_GetError());
   }
 
-  srand(0);
+  srand(time(NULL));
   DEBUG_TRACE("System init end");
 }
 
 void
 game_init_assets(TextureSource *t_src, size_t t_size,
                  SpriteSource  *s_src, size_t s_size,
-                 FontSource    *f_src, size_t f_size)
+                 FontSource    *f_src, size_t f_size,
+                 AudioSource   *a_src, size_t a_size)
 {
   DEBUG_TRACE("Asset init start");
 
@@ -202,6 +205,27 @@ game_init_assets(TextureSource *t_src, size_t t_size,
     SDL_FreeSurface(charset_full);
   }
 
+  // Audio
+  num_audio = a_size / sizeof(AudioSource);
+
+  audio_map = calloc(num_audio, sizeof(char *));
+  audios    = calloc(num_audio, sizeof(Mix_Chunk *));
+
+  if (audio_map == NULL || audios == NULL)
+  {
+    game_free();
+    DEBUG_ASSERT(0, "Can't allocate space for audio!");
+  }
+  for (size_t i = 0; i < num_audio; i++)
+  {
+    audio_map[i] = a_src[i].key;
+    audios[i] = Mix_LoadWAV(a_src[i].file);
+    if (audios[i] == NULL)
+    {
+      DEBUG_ERROR("Can't load audio! Mix_Error:\n%s", Mix_GetError());
+    }
+  }
+
   DEBUG_TRACE("Asset init end");
 
   scene_init();
@@ -272,6 +296,10 @@ game_free()
   {
     SDL_DestroyTexture(fonts[i]);
   }
+  for (size_t i = 0; i < num_audio; i++)
+  {
+    Mix_FreeChunk(audios[i]);
+  }
 
   free(tex_map);
   free(textures);
@@ -283,6 +311,9 @@ game_free()
   free(font_map);
   free(fonts);
   free(font_rects);
+
+  free(audio_map);
+  free(audios);
 
   DEBUG_TRACE("System free");
 
@@ -296,7 +327,7 @@ game_free()
 }
 
 void
-game_draw_sprite(const char *sprite, float x, float y, float a)
+game_draw_sprite(const char *sprite, float x, float y, float sx, float sy, float a)
 {
   int si = binary_search(spr_map, num_sprites, sprite);
   if (si == -1)
@@ -305,10 +336,10 @@ game_draw_sprite(const char *sprite, float x, float y, float a)
   }
 
   SDL_FRect dest = {
-    x - sprites[si].w / 2.0,
-    y - sprites[si].h / 2.0,
-    sprites[si].w,
-    sprites[si].h
+    x - sprites[si].w / 2.0 * sx,
+    y - sprites[si].h / 2.0 * sy,
+    sprites[si].w * sx,
+    sprites[si].h * sy,
   };
   SDL_RenderCopyExF(renderer, textures[spr_ids[si]], &sprites[si], &dest, a, NULL, SDL_FLIP_NONE);
 }
@@ -324,37 +355,30 @@ game_draw_text(const char *font, const char *text, float x, float y, FontDraw h,
   }
 
   int offset_x = 0, offset_y = 0;
-  switch (h)
+
+  if (h == FontDraw_Right || h == FontDraw_Center)
   {
-  case FontDraw_Center:
-  case FontDraw_Right:
     for (size_t i = 0; text[i]; i++)
     {
       size_t ri = fi * (127 - ' ') + text[i] - ' ';
       offset_x -= font_rects[ri].w;
     }
-    if (h == FontDraw_Center)
-    {
-      offset_x /= 2;
-    }
-    break;
-  default:
-    break;
+  }
+  if (h == FontDraw_Center)
+  {
+    offset_x /= 2;
   }
 
-  switch (v)
+  if (v == FontDraw_Bottom || h == FontDraw_Center)
   {
-  case FontDraw_Center:
-    SDL_QueryTexture(fonts[fi], NULL, NULL, NULL, &offset_y);
-    offset_y /= -2;
-    break;
-  case FontDraw_Bottom:
     SDL_QueryTexture(fonts[fi], NULL, NULL, NULL, &offset_y);
     offset_y *= -1;
-    break;
-  default:
-    break;
   }
+  if (v == FontDraw_Center)
+  {
+    offset_y /= 2;
+  }
+
   for (size_t i = 0; text[i]; i++)
   {
     size_t ri = fi * (127 - ' ') + text[i] - ' ';
@@ -365,3 +389,14 @@ game_draw_text(const char *font, const char *text, float x, float y, FontDraw h,
   }
 }
 
+void
+game_play_audio(const char *aud, int loops)
+{
+  int ai = binary_search(audio_map, num_audio, aud);
+  if (ai == -1)
+  {
+    ERROR_RETURN(, "Can't find audio: %s", aud);
+  }
+
+  Mix_PlayChannel(-1, audios[ai], loops);
+}
