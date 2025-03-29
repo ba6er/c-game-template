@@ -3,8 +3,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-typedef uint8_t Entity;
-
 void ecs_init(size_t num_c, size_t *size_c);
 void ecs_free();
 

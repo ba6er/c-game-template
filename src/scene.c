@@ -9,8 +9,6 @@ typedef struct {
 }
 Input;
 
-static Input in;
-
 typedef enum {
   ETag_Player = 1 >> 0,
   ETag_Wall   = 1 >> 1,
@@ -28,20 +26,36 @@ typedef struct {
 C_Pos, C_Vel;
 
 typedef struct {
+  float x, y, ox, oy;
+}
+C_Size;
+
+typedef struct {
+  float max_speed, accel, friction, gravity, jump_height;
+  int can_jump;
+}
+C_Plat;
+
+typedef struct {
   const char *spr;
   float sx, sy, rot;
-} C_Sprite;
+} C_Spr;
 
 typedef enum {
   CE_Tag,
   CE_Pos,
   CE_Vel,
-  CE_Sprite,
+  CE_Size,
+  CE_Plat,
+  CE_Spr,
   CE_Count
 }
 Component;
 
-static void scene_create_entity(uint64_t *i_tags, C_Pos *i_pos, C_Vel *i_vel, C_Sprite *i_spr);
+static size_t scene_create_entity(C_Tag *i_tag, C_Pos *i_pos, C_Vel *i_vel, C_Size *i_size, C_Spr *i_spr);
+
+static Input in;
+static int brick_ids[15][20];
 
 void
 scene_init()
@@ -49,21 +63,26 @@ scene_init()
   DEBUG_TRACE("Scene init begin");
 
   size_t cs[CE_Count] = {
-    [CE_Tag]    = sizeof(C_Tag),
-    [CE_Pos]    = sizeof(C_Pos),
-    [CE_Vel]    = sizeof(C_Vel),
-    [CE_Sprite] = sizeof(C_Sprite),
+    [CE_Tag]  = sizeof(C_Tag),
+    [CE_Pos]  = sizeof(C_Pos),
+    [CE_Vel]  = sizeof(C_Vel),
+    [CE_Size] = sizeof(C_Size),
+    [CE_Plat] = sizeof(C_Plat),
+    [CE_Spr]  = sizeof(C_Spr),
   };
   ecs_init(CE_Count, cs);
 
   // Player
   {
-    size_t p_tags = ETag_Player;
-    C_Pos p_pos = {80, 160};
-    C_Vel c_vel = {0, 0};
-    C_Sprite p_sprite = {"plr_s", 1, 1, 0};
+    C_Tag p_tag = {ETag_Player};
+    C_Pos p_pos = {80, 80};
+    C_Vel p_vel = {0, 0};
+    C_Size p_size = {10, 14, 0, 1};
+    C_Spr p_sprite = {"plr_s", 1, 1, 0};
 
-    scene_create_entity(&p_tags, &p_pos, &c_vel, &p_sprite);
+    size_t p = scene_create_entity(&p_tag, &p_pos, &p_vel, &p_size, &p_sprite);
+    C_Plat *pl = ecs_add_component(p, CE_Plat);
+    *pl = (C_Plat){100, 100, 200, 1, 200, 0};
   }
 
   // Bricks
@@ -90,12 +109,13 @@ scene_init()
     {
       if (bricks[i][j] == '.')
       {
+        brick_ids[i][j] = -1;
         continue;
       }
 
-      size_t b_tags = ETag_Wall;
+      C_Tag b_tag = {ETag_Wall};
       C_Pos b_pos = {j * 16 + 8, i * 16 + 8};
-      C_Sprite b_sprite = {NULL, 1, 1, 0};
+      C_Spr b_sprite = {NULL, 1, 1, 0};
       switch (bricks[i][j])
       {
       case 'C':
@@ -109,7 +129,8 @@ scene_init()
         break;
       }
 
-      scene_create_entity(&b_tags, &b_pos, NULL, &b_sprite);
+      int b = scene_create_entity(&b_tag, &b_pos, NULL, NULL, &b_sprite);
+      brick_ids[i][j] = b;
     }
   }
 
@@ -149,9 +170,54 @@ scene_update(float dt, float ct)
     // Player
     if (et->tags & ETag_Player)
     {
+      C_Pos *pp = ecs_get_component(e, CE_Pos);
       C_Vel *pv = ecs_get_component(e, CE_Vel);
-      pv->x = (in.right - in.left) * 100 * dt;
-      pv->y = (in.down - in.up) * 100 * dt;
+      C_Size *ps = ecs_get_component(e, CE_Size);
+      C_Plat *pl = ecs_get_component(e, CE_Plat);
+      pv->x = (in.right - in.left) * pl->max_speed;
+      pv->y += pl->gravity;
+      if (in.up && pl->can_jump)
+      {
+        pv->y = -pl->jump_height;
+      }
+
+      // Horzontal and vertical movement for collision has to be handled separately
+      int xi_hl = (int)((pp->x - (ps->x - ps->ox + 0.5f) / 2 + pv->x * dt) / 16);
+      int xi_hr = (int)((pp->x + (ps->x + ps->ox + 0.5f) / 2 + pv->x * dt) / 16);
+      int yi_hu = (int)((pp->y - (ps->y - ps->oy + 0.5f) / 2) / 16);
+      int yi_hd = (int)((pp->y + (ps->y + ps->oy + 0.5f) / 2) / 16);
+      int xi_vl = (int)((pp->x - (ps->x - ps->ox + 0.5f) / 2) / 16);
+      int xi_vr = (int)((pp->x + (ps->x + ps->ox + 0.5f) / 2) / 16);
+      int yi_vu = (int)((pp->y - (ps->y - ps->oy + 0.5f) / 2 + pv->y * dt) / 16);
+      int yi_vd = (int)((pp->y + (ps->y + ps->oy + 0.5f) / 2 + pv->y * dt) / 16);
+
+
+      if (xi_hl < 0  || xi_hr < 0  || yi_hu < 0  || yi_hd < 0  ||
+          xi_vl < 0  || xi_vr < 0  || yi_vu < 0  || yi_vd < 0  ||
+          xi_hl > 19 || xi_hr > 19 || yi_hu > 14 || yi_hd > 14 ||
+          xi_vl > 19 || xi_vr > 19 || yi_vu > 14 || yi_vd > 14)
+      {
+        DEBUG_WARNING("Player outside bounds");
+        break;
+      }
+
+      int col_l = (brick_ids[yi_hu][xi_hl] != -1 || brick_ids[yi_hd][xi_hl] != -1);
+      int col_r = (brick_ids[yi_hu][xi_hr] != -1 || brick_ids[yi_hd][xi_hr] != -1);
+      int col_u = (brick_ids[yi_vu][xi_vl] != -1 || brick_ids[yi_vu][xi_vr] != -1);
+      int col_d = (brick_ids[yi_vd][xi_vl] != -1 || brick_ids[yi_vd][xi_vr] != -1);
+
+      if ((in.left && col_l) || (in.right && col_r))
+      {
+        pv->x = 0;
+      }
+      if ((in.up && col_u) || col_d)
+      {
+        pv->y = 0;
+      }
+      pl->can_jump = col_d;
+
+
+      // DEBUG_TRACE("%d %d", (int)(pp->x / 16), (int)(pp->y / 16));
     }
 
     // Update position with velocity
@@ -159,8 +225,8 @@ scene_update(float dt, float ct)
     {
       C_Vel *ep = ecs_get_component(e, CE_Pos);
       C_Vel *ev = ecs_get_component(e, CE_Vel);
-      ep->x += ev->x;
-      ep->y += ev->y;
+      ep->x += ev->x * dt;
+      ep->y += ev->y * dt;
     }
   }
 }
@@ -179,13 +245,13 @@ scene_render(float dt, float ct)
     }
     num_iter++;
 
-    if (ecs_has_component(e, CE_Pos) == 0 || ecs_has_component(e, CE_Sprite) == 0)
+    if (ecs_has_component(e, CE_Pos) == 0 || ecs_has_component(e, CE_Spr) == 0)
     {
       continue;
     }
 
     C_Pos *p = ecs_get_component(e, CE_Pos);
-    C_Sprite *s = ecs_get_component(e, CE_Sprite);
+    C_Spr *s = ecs_get_component(e, CE_Spr);
 
     game_draw_sprite(s->spr, p->x, p->y, s->sx, s->sy, s->rot);
   }
@@ -213,19 +279,17 @@ scene_input_key(int key, int pressed)
     in.down = pressed;
     break;
   }
-
-  DEBUG_TRACE("Input: %d %d %d %d", in.left, in.right, in.up, in.down);
 }
 
-static void
-scene_create_entity(uint64_t *i_tags, C_Pos *i_pos, C_Vel *i_vel, C_Sprite *i_spr)
+static size_t
+scene_create_entity(C_Tag *i_tag, C_Pos *i_pos, C_Vel *i_vel, C_Size *i_size, C_Spr *i_spr)
 {
   size_t e = ecs_create_entity();
 
-  if (i_tags != NULL)
+  if (i_tag != NULL)
   {
     C_Tag *t = ecs_add_component(e, CE_Tag);
-    t->tags |= *i_tags;
+    t->tags |= i_tag->tags;
   }
   if (i_pos != NULL)
   {
@@ -239,13 +303,23 @@ scene_create_entity(uint64_t *i_tags, C_Pos *i_pos, C_Vel *i_vel, C_Sprite *i_sp
     v->x = i_vel->x;
     v->y = i_vel->y;
   }
+  if (i_size != NULL)
+  {
+    C_Size *s = ecs_add_component(e, CE_Size);
+    s->x = i_size->x;
+    s->y = i_size->y;
+    s->ox = i_size->ox;
+    s->oy = i_size->oy;
+  }
   if (i_spr != NULL)
   {
-    C_Sprite *s = ecs_add_component(e, CE_Sprite);
+    C_Spr *s = ecs_add_component(e, CE_Spr);
     s->spr = i_spr->spr;
     s->rot = i_spr->rot;
     s->sx = i_spr->sx;
     s->sy = i_spr->sy;
   }
+
+  return e;
 }
 

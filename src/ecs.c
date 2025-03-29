@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include <string.h>
 
+typedef uint8_t Entity;
+
 static size_t num_components, num_entities, max_entities, next_index;
 
 static const size_t init_entities = 32;
