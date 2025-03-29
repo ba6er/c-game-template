@@ -100,6 +100,11 @@ ecs_get_entities(size_t *num_e, size_t *max_e)
 void
 ecs_destroy_entity(size_t e)
 {
+  if (entities[e] == 0)
+  {
+    ERROR_RETURN(, "No entity to destroy at index %ld", e);
+  }
+
   entities[e] = 0;
   num_entities--;
 }
@@ -107,13 +112,13 @@ ecs_destroy_entity(size_t e)
 int
 ecs_alive(size_t e)
 {
-  return entities[e];
+  return entities[e] != 0;
 }
 
 int
 ecs_has_component(size_t e, size_t c)
 {
-  return entities[e] & (2 >> c);
+  return (entities[e] & (2 << c)) != 0;
 }
 
 void *
@@ -121,14 +126,14 @@ ecs_add_component(size_t e, size_t c)
 {
   // First bit is for checking if alive
   // Maybe redundant, but technically an entity can have no components
-  entities[e] |= 2 >> c;
+  entities[e] |= (2 << c);
   return (int8_t *)components[c] + e * component_sizes[c];
 }
 
 void
 ecs_remove_component(size_t e, size_t c)
 {
-  entities[e] &= ~(2 >> c);
+  entities[e] &= ~(2 << c);
 }
 
 void *

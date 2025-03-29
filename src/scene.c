@@ -59,9 +59,11 @@ scene_init()
   // Player
   {
     size_t p_tags = ETag_Player;
-    C_Pos p_pos  = {80, 160};
+    C_Pos p_pos = {80, 160};
+    C_Vel c_vel = {0, 0};
     C_Sprite p_sprite = {"plr_s", 1, 1, 0};
-    scene_create_entity(&p_tags, &p_pos, NULL, &p_sprite);
+
+    scene_create_entity(&p_tags, &p_pos, &c_vel, &p_sprite);
   }
 
   // Bricks
@@ -142,7 +144,24 @@ scene_update(float dt, float ct)
       continue;
     }
 
-    
+    C_Tag *et = ecs_get_component(e, CE_Tag);
+
+    // Player
+    if (et->tags & ETag_Player)
+    {
+      C_Vel *pv = ecs_get_component(e, CE_Vel);
+      pv->x = (in.right - in.left) * 100 * dt;
+      pv->y = (in.down - in.up) * 100 * dt;
+    }
+
+    // Update position with velocity
+    if (ecs_has_component(e, CE_Vel))
+    {
+      C_Vel *ep = ecs_get_component(e, CE_Pos);
+      C_Vel *ev = ecs_get_component(e, CE_Vel);
+      ep->x += ev->x;
+      ep->y += ev->y;
+    }
   }
 }
 
@@ -159,6 +178,11 @@ scene_render(float dt, float ct)
       continue;
     }
     num_iter++;
+
+    if (ecs_has_component(e, CE_Pos) == 0 || ecs_has_component(e, CE_Sprite) == 0)
+    {
+      continue;
+    }
 
     C_Pos *p = ecs_get_component(e, CE_Pos);
     C_Sprite *s = ecs_get_component(e, CE_Sprite);
@@ -189,6 +213,8 @@ scene_input_key(int key, int pressed)
     in.down = pressed;
     break;
   }
+
+  DEBUG_TRACE("Input: %d %d %d %d", in.left, in.right, in.up, in.down);
 }
 
 static void
