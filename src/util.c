@@ -9,7 +9,7 @@ file_read(const char *filename)
 {
   File file = {0};
 
-  if (!filename)
+  if (filename == NULL)
   {
     ERROR_RETURN(file, "No filename provided");
   }

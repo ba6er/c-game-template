@@ -64,7 +64,7 @@ game_init(int ww, int wh, int lw, int lh, const char *title)
   SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
   SDL_RenderSetLogicalSize(renderer, lw, lh);
 
-  if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG))
+  if ((IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG) == 0)
   {
     SDL_Quit();
     DEBUG_ASSERT(0, "Can't init SDL_image! IMG_Error:\n%s", IMG_GetError());
@@ -258,6 +258,14 @@ game_run(int tick_rate)
       if (event.type == SDL_QUIT)
       {
         is_running = 0;
+      }
+      if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP)
+      {
+        if (event.key.repeat)
+        {
+          break;
+        }
+        scene_input_key(event.key.keysym.sym, event.key.state);
       }
     }
 
