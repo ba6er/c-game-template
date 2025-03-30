@@ -359,8 +359,12 @@ game_draw_sprite(const char *sprite, float x, float y, float sx, float sy, float
 
 
 void
-game_draw_text(const char *font, const char *text, float x, float y, float sx, float sy, FontDraw h, FontDraw v)
+game_draw_text(const char *font, const char *text, float x, float y, float sx, float sy, float ox, float oy)
 {
+  if (ox > 1 || ox < 0 || oy > 1 || oy < 0)
+  {
+    DEBUG_WARNING("Offets should be in the range of [0,1], 0 -> left/top, 1 -> right/bottom alignment");
+  }
   if (font == NULL)
   {
     ERROR_RETURN(, "No font provided!");
@@ -374,27 +378,20 @@ game_draw_text(const char *font, const char *text, float x, float y, float sx, f
 
   int offset_x = 0, offset_y = 0;
 
-  if (h == FontDraw_Right || h == FontDraw_Center)
+  if (ox != 0)
   {
     for (size_t i = 0; text[i]; i++)
     {
       size_t ri = fi * (127 - ' ') + text[i] - ' ';
       offset_x -= font_rects[ri].w;
     }
-  }
-  if (h == FontDraw_Center)
-  {
-    offset_x /= 2;
+    offset_x *= ox;
   }
 
-  if (v == FontDraw_Bottom || h == FontDraw_Center)
+  if (oy != 0)
   {
     SDL_QueryTexture(fonts[fi], NULL, NULL, NULL, &offset_y);
-    offset_y *= -1;
-  }
-  if (v == FontDraw_Center)
-  {
-    offset_y /= 2;
+    offset_y *= -oy;
   }
 
   offset_x *= sx;

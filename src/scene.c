@@ -298,7 +298,7 @@ scene_render(float dt, float ct)
 
   game_draw_text("font0",
                  "Press arrow keys to move around",
-                 160, 40, 0.5f, 0.5f, FontDraw_Center, FontDraw_Center);
+                 160, 32, 0.5f, 0.5f, 0.5f, 0.5f);
 }
 
 void
