@@ -201,6 +201,7 @@ game_init_assets(TextureSource *t_src, size_t t_size,
     {
       DEBUG_ERROR("Can't load charset texture! SDL_Error:\n%s", SDL_GetError());
     }
+    SDL_SetTextureBlendMode(fonts[i], SDL_BLENDMODE_ADD);
     TTF_CloseFont(font);
     SDL_FreeSurface(charset_full);
   }
