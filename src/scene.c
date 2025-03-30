@@ -31,8 +31,10 @@ typedef struct {
 C_Size;
 
 typedef struct {
-  float max_speed, accel, friction, gravity, jump_height;
+  float speed, acc, fric, gr_j, gr_f, jump, jumpi, tt_j, tt_jo, tt_ct;
+
   int can_jump;
+  float jump_timer, coyote_timer;
 }
 C_Plat;
 
@@ -76,13 +78,33 @@ scene_init()
   {
     C_Tag p_tag = {ETag_Player};
     C_Pos p_pos = {80, 80};
-    C_Vel p_vel = {0, 0};
-    C_Size p_size = {10, 14, 0, 1};
-    C_Spr p_sprite = {"plr_s", 1, 1, 0};
-
+    C_Vel p_vel = {0};
+    C_Size p_size = {
+      .x  = 10,
+      .y  = 14,
+      .ox = 0,
+      .oy = 1
+    };
+    C_Spr p_sprite = {
+      .spr = "plr_s",
+      .sx  = 1,
+      .sy  = 1,
+      .rot = 0,
+    };
     size_t p = scene_create_entity(&p_tag, &p_pos, &p_vel, &p_size, &p_sprite);
     C_Plat *pl = ecs_add_component(p, CE_Plat);
-    *pl = (C_Plat){100, 100, 200, 1, 200, 0};
+    *pl = (C_Plat){
+      .speed = 160,
+      .acc   = 700,
+      .fric  = 900,
+      .gr_j  = 650,
+      .gr_f  = 980,
+      .jump  = 240,
+      .jumpi = 150,
+      .tt_j  = 0.18f,
+      .tt_jo = 0.05f,
+      .tt_ct = 0.05f,
+    };
   }
 
   // Bricks
@@ -100,7 +122,7 @@ scene_init()
     "R..............LR..L",
     "R..................L",
     "R.....LCCCR........L",
-    "R..................L",
+    "R..............LR..L",
     "CCCCCCCCCCCCCCCCCCCC",
   };
   for (size_t i = 0; i < 15; i++)
@@ -174,11 +196,20 @@ scene_update(float dt, float ct)
       C_Vel *pv = ecs_get_component(e, CE_Vel);
       C_Size *ps = ecs_get_component(e, CE_Size);
       C_Plat *pl = ecs_get_component(e, CE_Plat);
-      pv->x = (in.right - in.left) * pl->max_speed;
-      pv->y += pl->gravity;
+
+      float h_dest = (in.right - in.left) * pl->speed;
+      float h_step = h_dest ? pl->acc : pl->fric;
+      pv->x = move_toward(pv->x, h_dest, h_step * dt);
+
+      pv->y += pv->y > 0 ? pl->gr_f * dt : pl->gr_j * dt;
       if (in.up && pl->can_jump)
       {
-        pv->y = -pl->jump_height;
+        pv->y = pl->jump_timer <= pl->tt_jo ? -pl->jumpi : -pl->jump;
+        if (pl->coyote_timer < pl->tt_ct)
+        {
+          pl->jump_timer = 0;
+        }
+        pl->coyote_timer = pl->tt_ct;
       }
 
       // Horzontal and vertical movement for collision has to be handled separately
@@ -190,7 +221,6 @@ scene_update(float dt, float ct)
       int xi_vr = (int)((pp->x + (ps->x + ps->ox + 0.5f) / 2) / 16);
       int yi_vu = (int)((pp->y - (ps->y - ps->oy + 0.5f) / 2 + pv->y * dt) / 16);
       int yi_vd = (int)((pp->y + (ps->y + ps->oy + 0.5f) / 2 + pv->y * dt) / 16);
-
 
       if (xi_hl < 0  || xi_hr < 0  || yi_hu < 0  || yi_hd < 0  ||
           xi_vl < 0  || xi_vr < 0  || yi_vu < 0  || yi_vd < 0  ||
@@ -206,22 +236,32 @@ scene_update(float dt, float ct)
       int col_u = (brick_ids[yi_vu][xi_vl] != -1 || brick_ids[yi_vu][xi_vr] != -1);
       int col_d = (brick_ids[yi_vd][xi_vl] != -1 || brick_ids[yi_vd][xi_vr] != -1);
 
-      if ((in.left && col_l) || (in.right && col_r))
+      if ((pv->x < 0 && col_l) || (pv->x > 0 && col_r))
       {
         pv->x = 0;
       }
-      if ((in.up && col_u) || col_d)
+      if (col_u || col_d)
       {
         pv->y = 0;
       }
-      pl->can_jump = col_d;
 
-
-      // DEBUG_TRACE("%d %d", (int)(pp->x / 16), (int)(pp->y / 16));
+      // Update coyote and jump timers and update if player can jump
+      pl->jump_timer += dt;
+      pl->coyote_timer += dt;
+      if (in.up == 0)
+      {
+        pl->jump_timer = pl->tt_j;
+      }
+      if (col_d)
+      {
+        pl->jump_timer = 0;
+        pl->coyote_timer = 0;
+      }
+      pl->can_jump = col_d || pl->jump_timer < pl->tt_j || pl->coyote_timer < pl->tt_ct;
     }
 
     // Update position with velocity
-    if (ecs_has_component(e, CE_Vel))
+    if (ecs_has_component(e, CE_Pos) && ecs_has_component(e, CE_Vel))
     {
       C_Vel *ep = ecs_get_component(e, CE_Pos);
       C_Vel *ev = ecs_get_component(e, CE_Vel);
