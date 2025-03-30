@@ -67,3 +67,29 @@ binary_search(const char **arr, size_t n, const char *target)
   }
   ERROR_RETURN(-1, "Failed to find target %s", target);
 }
+
+float
+move_toward(float start, float dest, float step)
+{
+  if (start == dest)
+  {
+    return start;
+  }
+
+  if (start < dest)
+  {
+    if (dest - start <= step)
+    {
+      return dest;
+    }
+    return start + step;
+  }
+  else
+  {
+    if (start - dest <= step)
+    {
+      return dest;
+    }
+    return start - step;
+  }
+}
