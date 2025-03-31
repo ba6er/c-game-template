@@ -361,13 +361,13 @@ game_draw_sprite(const char *sprite, float x, float y, float sx, float sy, float
 void
 game_draw_text(const char *font, const char *text, float x, float y, float sx, float sy, float ox, float oy)
 {
-  if (ox > 1 || ox < 0 || oy > 1 || oy < 0)
-  {
-    DEBUG_WARNING("Offets should be in the range of [0,1], 0 -> left/top, 1 -> right/bottom alignment");
-  }
   if (font == NULL)
   {
     ERROR_RETURN(, "No font provided!");
+  }
+  if (ox > 1 || ox < 0 || oy > 1 || oy < 0)
+  {
+    DEBUG_WARNING("Offets should be in the range of [0,1], 0 -> left/top, 1 -> right/bottom alignment");
   }
 
   int fi = binary_search(font_map, num_fonts, font);

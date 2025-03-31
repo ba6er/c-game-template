@@ -3,7 +3,7 @@
 int
 main(int argc, char *argv[])
 {
-  const char *title = "Luk Adventures";
+  const char *title = "C Game Template";
   int ww = 640, wh = 480;
   int lw = 320, lh = 240;
 
