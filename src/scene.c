@@ -75,9 +75,10 @@ scene_init()
   ecs_init(CE_Count, cs);
 
   // Player
+  for (size_t i = 0; i < 20000; i++)
   {
     C_Tag p_tag = {ETag_Player};
-    C_Pos p_pos = {80, 80};
+    C_Pos p_pos = {rand() % 256 + 32, 40}; // {80, 80};
     C_Vel p_vel = {0};
     C_Size p_size = {
       .x  = 10,
@@ -94,13 +95,13 @@ scene_init()
     size_t p = scene_create_entity(&p_tag, &p_pos, &p_vel, &p_size, &p_sprite);
     C_Plat *pl = ecs_add_component(p, CE_Plat);
     *pl = (C_Plat){
-      .speed = 160,
-      .acc   = 700,
-      .fric  = 900,
-      .gr_j  = 650,
-      .gr_f  = 980,
-      .jump  = 240,
-      .jumpi = 150,
+      .speed = 100 + rand() % 200, // 160,
+      .acc   = 100 + rand() % 900, // 700,
+      .fric  = 100 + rand() % 900, // 900,
+      .gr_j  = 600 + rand() % 100, // 650,
+      .gr_f  = 800 + rand() % 200, // 980,
+      .jump  = 200 + rand() % 100, // 240,
+      .jumpi = 100 + rand() % 100, // 150,
       .tt_j  = 0.18f,
       .tt_jo = 0.05f,
       .tt_ct = 0.05f,
@@ -109,7 +110,7 @@ scene_init()
 
   // Bricks
   const char bricks[15][20] = {
-    "R..................L",
+    "CCCCCCCCCCCCCCCCCCCC",
     "R..................L",
     "R..................L",
     "R..................L",
@@ -240,8 +241,9 @@ scene_update(float dt, float ct)
       {
         pv->x = 0;
       }
-      if (col_u || col_d)
+      if ((pv->y < 0 && col_u) || col_d)
       {
+        pp->y -= col_d * pv->y * dt;
         pv->y = 0;
       }
 
