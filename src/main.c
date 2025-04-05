@@ -3,7 +3,7 @@
 int
 main(int argc, char *argv[])
 {
-  const char *title = "C Game Template";
+  const char *title = "Luk Adventures";
   int ww = 640, wh = 480;
   int lw = 320, lh = 240;
 
@@ -33,11 +33,12 @@ main(int argc, char *argv[])
     {"explosion", "sfx/explosion.wav"},
   };
 
-  game_init(ww, wh, lw, lh, title);
+  game_init_system(ww, wh, lw, lh, title);
   game_init_assets(t_src, sizeof(t_src),
                    s_src, sizeof(s_src),
                    f_src, sizeof(f_src),
                    a_src, sizeof(a_src));
+  game_init_scene();
   game_run(tick_rate);
   game_free();
   return 0;
