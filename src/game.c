@@ -28,7 +28,7 @@ static size_t     num_audio;
 static const char **audio_map;
 static Mix_Chunk  **audios;
 
-static Scene current_scene;
+static Scene *current_scene;
 
 void
 game_init_system(int ww, int wh, int lw, int lh, const char *title)
@@ -275,14 +275,14 @@ game_run(int tick_rate)
         {
           break;
         }
-        scene_input_key(&current_scene, event.key.keysym.sym, event.key.state);
+        scene_input_key(current_scene, event.key.keysym.sym, event.key.state);
       }
     }
 
     // Update
     while (lag_time >= tick_time)
     {
-      scene_update(&current_scene, tick_time, current_time);
+      scene_update(current_scene, tick_time, current_time);
 
       lag_time -= tick_time;
       tick_counter++;
@@ -292,7 +292,7 @@ game_run(int tick_rate)
     SDL_SetRenderDrawColor(renderer, 0x40, 0x80, 0xd0, 0xff);
     SDL_RenderClear(renderer);
 
-    scene_render(&current_scene, delta_time, current_time);
+    scene_render(current_scene, delta_time, current_time);
 
     SDL_RenderPresent(renderer);
   }
@@ -301,7 +301,7 @@ game_run(int tick_rate)
 void
 game_free()
 {
-  scene_free(&current_scene);
+  scene_free(current_scene);
 
   DEBUG_TRACE("Asset free");
 

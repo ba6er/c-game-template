@@ -1,7 +1,7 @@
 #include "scene.h"
-#include "ecs.h"
 #include "game.h"
 #include "util.h"
+
 #include <stdint.h>
 
 typedef enum {
@@ -49,7 +49,7 @@ typedef enum {
 }
 Component;
 
-static size_t scene_create_entity(C_Tag *i_tag, C_Pos *i_pos, C_Vel *i_vel, C_Size *i_size, C_Spr *i_spr);
+static size_t scene_create_entity(Scene *s, C_Tag *i_tag, C_Pos *i_pos, C_Vel *i_vel, C_Size *i_size, C_Spr *i_spr);
 static void scene_update_player(Scene *s, size_t e, float dt);
 
 char *
@@ -80,9 +80,13 @@ level_load(const char *file, size_t *width, size_t *height)
   return brick_data;
 }
 
-Scene
+Scene *
 scene_init(const char *bricks, size_t w, size_t h)
 {
+  Scene *scene = calloc(sizeof(Scene), 1);
+  scene->w = w;
+  scene->h = h;
+
   DEBUG_TRACE("Scene init begin");
 
   size_t cs[CE_Count] = {
@@ -93,7 +97,7 @@ scene_init(const char *bricks, size_t w, size_t h)
     [CE_Plat] = sizeof(C_Plat),
     [CE_Spr]  = sizeof(C_Spr),
   };
-  ecs_init(CE_Count, cs);
+  scene->ecs = ecs_init(CE_Count, cs);
 
   // Player
   {
@@ -112,8 +116,8 @@ scene_init(const char *bricks, size_t w, size_t h)
       .sy  = 1,
       .rot = 0,
     };
-    size_t p = scene_create_entity(&p_tag, &p_pos, &p_vel, &p_size, &p_sprite);
-    C_Plat *pl = ecs_add_component(p, CE_Plat);
+    size_t p = scene_create_entity(scene, &p_tag, &p_pos, &p_vel, &p_size, &p_sprite);
+    C_Plat *pl = ecs_add_component(scene->ecs, p, CE_Plat);
     *pl = (C_Plat){
       .speed = 160.0f,
       .acc   = 700.0f,
@@ -129,7 +133,6 @@ scene_init(const char *bricks, size_t w, size_t h)
   }
 
   int *brick_ids = calloc(w * h, sizeof(int));
-
 
   // Bricks
   for (size_t y = 0; y < h; y++)
@@ -158,19 +161,15 @@ scene_init(const char *bricks, size_t w, size_t h)
         break;
       }
 
-      int b = scene_create_entity(&b_tag, &b_pos, NULL, NULL, &b_sprite);
+      int b = scene_create_entity(scene, &b_tag, &b_pos, NULL, NULL, &b_sprite);
       brick_ids[y * w + x] = b;
     }
   }
+  scene->brick_ids = brick_ids;
 
   DEBUG_TRACE("Scene init end");
 
-  return (Scene){
-    .w = w,
-    .h = h,
-    .in = {0},
-    .brick_ids = brick_ids,
-  };
+  return scene;
 }
 
 void
@@ -178,31 +177,32 @@ scene_free(Scene *s)
 {
   DEBUG_TRACE("Scene free");
 
+  ecs_free(s->ecs);
   free(s->brick_ids);
-  ecs_free();
+  free(s);
 }
 
 void
 scene_update(Scene *s, float dt, float ct)
 {
   size_t num_e = 0, max_e = 0, num_iter = 0;
-  ecs_get_entities(&num_e, &max_e);
+  ecs_get_entities(s->ecs, &num_e, &max_e);
 
   for (size_t e = 0; e < max_e && num_iter < num_e; e++)
   {
-    if (ecs_alive(e) == 0)
+    if (ecs_alive(s->ecs, e) == 0)
     {
       continue;
     }
     num_iter++;
 
-    if (ecs_has_component(e, CE_Tag) == 0)
+    if (ecs_has_component(s->ecs, e, CE_Tag) == 0)
     {
       DEBUG_ERROR("Entity %ld has no tags!", e);
       continue;
     }
 
-    C_Tag *et = ecs_get_component(e, CE_Tag);
+    C_Tag *et = ecs_get_component(s->ecs, e, CE_Tag);
 
     // Player
     if (et->tags & ETag_Player)
@@ -211,10 +211,10 @@ scene_update(Scene *s, float dt, float ct)
     }
 
     // Update position with velocity
-    if (ecs_has_component(e, CE_Pos) && ecs_has_component(e, CE_Vel))
+    if (ecs_has_component(s->ecs, e, CE_Pos) && ecs_has_component(s->ecs, e, CE_Vel))
     {
-      C_Vel *ep = ecs_get_component(e, CE_Pos);
-      C_Vel *ev = ecs_get_component(e, CE_Vel);
+      C_Vel *ep = ecs_get_component(s->ecs, e, CE_Pos);
+      C_Vel *ev = ecs_get_component(s->ecs, e, CE_Vel);
       ep->x += ev->x * dt;
       ep->y += ev->y * dt;
     }
@@ -225,25 +225,25 @@ void
 scene_render(Scene *s, float dt, float ct)
 {
   size_t num_e = 0, max_e = 0, num_iter = 0;
-  ecs_get_entities(&num_e, &max_e);
+  ecs_get_entities(s->ecs, &num_e, &max_e);
 
   for (size_t e = 0; e < max_e && num_iter < num_e; e++)
   {
-    if (ecs_alive(e) == 0)
+    if (ecs_alive(s->ecs, e) == 0)
     {
       continue;
     }
     num_iter++;
 
-    if (ecs_has_component(e, CE_Pos) == 0 || ecs_has_component(e, CE_Spr) == 0)
+    if (ecs_has_component(s->ecs, e, CE_Pos) == 0 || ecs_has_component(s->ecs, e, CE_Spr) == 0)
     {
       continue;
     }
 
-    C_Pos *p = ecs_get_component(e, CE_Pos);
-    C_Spr *s = ecs_get_component(e, CE_Spr);
+    C_Pos *ep = ecs_get_component(s->ecs, e, CE_Pos);
+    C_Spr *es = ecs_get_component(s->ecs, e, CE_Spr);
 
-    game_draw_sprite(s->spr, p->x, p->y, s->sx, s->sy, s->rot);
+    game_draw_sprite(es->spr, ep->x, ep->y, es->sx, es->sy, es->rot);
   }
 
   game_draw_text("font0",
@@ -272,42 +272,42 @@ scene_input_key(Scene *s, int key, int pressed)
 }
 
 static size_t
-scene_create_entity(C_Tag *i_tag, C_Pos *i_pos, C_Vel *i_vel, C_Size *i_size, C_Spr *i_spr)
+scene_create_entity(Scene *s, C_Tag *i_tag, C_Pos *i_pos, C_Vel *i_vel, C_Size *i_size, C_Spr *i_spr)
 {
-  size_t e = ecs_create_entity();
+  size_t e = ecs_create_entity(s->ecs);
 
   if (i_tag != NULL)
   {
-    C_Tag *t = ecs_add_component(e, CE_Tag);
+    C_Tag *t = ecs_add_component(s->ecs, e, CE_Tag);
     t->tags |= i_tag->tags;
   }
   if (i_pos != NULL)
   {
-    C_Pos *p = ecs_add_component(e, CE_Pos);
+    C_Pos *p = ecs_add_component(s->ecs, e, CE_Pos);
     p->x = i_pos->x;
     p->y = i_pos->y;
   }
   if (i_vel != NULL)
   {
-    C_Vel *v = ecs_add_component(e, CE_Vel);
+    C_Vel *v = ecs_add_component(s->ecs, e, CE_Vel);
     v->x = i_vel->x;
     v->y = i_vel->y;
   }
   if (i_size != NULL)
   {
-    C_Size *s = ecs_add_component(e, CE_Size);
-    s->x = i_size->x;
-    s->y = i_size->y;
-    s->ox = i_size->ox;
-    s->oy = i_size->oy;
+    C_Size *sz = ecs_add_component(s->ecs, e, CE_Size);
+    sz->x = i_size->x;
+    sz->y = i_size->y;
+    sz->ox = i_size->ox;
+    sz->oy = i_size->oy;
   }
   if (i_spr != NULL)
   {
-    C_Spr *s = ecs_add_component(e, CE_Spr);
-    s->spr = i_spr->spr;
-    s->rot = i_spr->rot;
-    s->sx = i_spr->sx;
-    s->sy = i_spr->sy;
+    C_Spr *sp = ecs_add_component(s->ecs, e, CE_Spr);
+    sp->spr = i_spr->spr;
+    sp->rot = i_spr->rot;
+    sp->sx = i_spr->sx;
+    sp->sy = i_spr->sy;
   }
 
   return e;
@@ -316,10 +316,10 @@ scene_create_entity(C_Tag *i_tag, C_Pos *i_pos, C_Vel *i_vel, C_Size *i_size, C_
 static void
 scene_update_player(Scene *s, size_t plr, float dt)
 {
-  C_Pos *pp = ecs_get_component(plr, CE_Pos);
-  C_Vel *pv = ecs_get_component(plr, CE_Vel);
-  C_Size *ps = ecs_get_component(plr, CE_Size);
-  C_Plat *pl = ecs_get_component(plr, CE_Plat);
+  C_Pos *pp = ecs_get_component(s->ecs, plr, CE_Pos);
+  C_Vel *pv = ecs_get_component(s->ecs, plr, CE_Vel);
+  C_Size *ps = ecs_get_component(s->ecs, plr, CE_Size);
+  C_Plat *pl = ecs_get_component(s->ecs, plr, CE_Plat);
 
   float h_dest = (s->in.right - s->in.left) * pl->speed;
   float h_step = h_dest ? pl->acc : pl->fric;

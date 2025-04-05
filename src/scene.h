@@ -1,5 +1,7 @@
 #pragma once
 
+#include "ecs.h"
+
 #include <stddef.h>
 
 typedef struct {
@@ -10,13 +12,14 @@ Input;
 typedef struct {
   size_t w, h;
   Input in;
+  ECS *ecs;
   int *brick_ids;
 }
 Scene;
 
 char *level_load(const char *file, size_t *w, size_t *h);
 
-Scene scene_init(const char *bricks, size_t w, size_t h);
+Scene *scene_init(const char *bricks, size_t w, size_t h);
 void scene_free(Scene *s);
 void scene_update(Scene *s, float dt, float ct);
 void scene_render(Scene *s, float dt, float ct);
