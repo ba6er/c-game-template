@@ -69,7 +69,7 @@ binary_search(const char **arr, size_t n, const char *target)
 }
 
 float
-move_toward(float start, float dest, float step)
+lerp(float start, float dest, float step)
 {
   if (start == dest)
   {

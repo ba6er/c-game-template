@@ -320,7 +320,7 @@ scene_update_player(Scene *s, size_t plr, float dt)
 
   float h_dest = (s->in.right - s->in.left) * s->plat_speed;
   float h_step = h_dest ? s->plat_accel : s->plat_fric;
-  pv->x = move_toward(pv->x, h_dest, h_step * dt);
+  pv->x = lerp(pv->x, h_dest, h_step * dt);
 
   pv->y += (pv->y > 0 ? s->grav_fall : s->grav_jump) * dt ;
   if (s->in.up && pl->can_jump)
