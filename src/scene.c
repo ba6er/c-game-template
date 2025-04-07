@@ -26,10 +26,8 @@ typedef struct {
 C_Size;
 
 typedef struct {
-  float speed, acc, fric, gr_j, gr_f, jump, jumpi, tt_j, tt_jo, tt_ct;
-
   int can_jump;
-  float jump_timer, coyote_timer;
+  float timer_jump, timer_coyote;
 }
 C_Plat;
 
@@ -87,6 +85,17 @@ scene_init(const char *bricks, size_t w, size_t h)
   scene->w = w;
   scene->h = h;
 
+  scene->plat_speed      = 160.0f;
+  scene->plat_accel      = 700.0f;
+  scene->plat_fric       = 900.0f;
+  scene->grav_jump       = 650.0f;
+  scene->grav_fall       = 980.0f;
+  scene->jump_force      = 240.0f;
+  scene->init_jump_force = 150.0f;
+  scene->timer_jump      = 0.18f;
+  scene->timer_init_jump = 0.05f;
+  scene->timer_coyote    = 0.05f;
+
   DEBUG_TRACE("Scene init begin");
 
   size_t cs[CE_Count] = {
@@ -117,19 +126,7 @@ scene_init(const char *bricks, size_t w, size_t h)
       .rot = 0,
     };
     size_t p = scene_create_entity(scene, &p_tag, &p_pos, &p_vel, &p_size, &p_sprite);
-    C_Plat *pl = ecs_add_component(scene->ecs, p, CE_Plat);
-    *pl = (C_Plat){
-      .speed = 160.0f,
-      .acc   = 700.0f,
-      .fric  = 900.0f,
-      .gr_j  = 650.0f,
-      .gr_f  = 980.0f,
-      .jump  = 240.0f,
-      .jumpi = 150.0f,
-      .tt_j  = 0.18f,
-      .tt_jo = 0.05f,
-      .tt_ct = 0.05f,
-    };
+    ecs_add_component(scene->ecs, p, CE_Plat);
   }
 
   int *brick_ids = calloc(w * h, sizeof(int));
@@ -321,19 +318,20 @@ scene_update_player(Scene *s, size_t plr, float dt)
   C_Size *ps = ecs_get_component(s->ecs, plr, CE_Size);
   C_Plat *pl = ecs_get_component(s->ecs, plr, CE_Plat);
 
-  float h_dest = (s->in.right - s->in.left) * pl->speed;
-  float h_step = h_dest ? pl->acc : pl->fric;
+  float h_dest = (s->in.right - s->in.left) * s->plat_speed;
+  float h_step = h_dest ? s->plat_accel : s->plat_fric;
   pv->x = move_toward(pv->x, h_dest, h_step * dt);
 
-  pv->y += pv->y > 0 ? pl->gr_f * dt : pl->gr_j * dt;
+  pv->y += (pv->y > 0 ? s->grav_fall : s->grav_jump) * dt ;
   if (s->in.up && pl->can_jump)
   {
-    pv->y = pl->jump_timer <= pl->tt_jo ? -pl->jumpi : -pl->jump;
-    if (pl->coyote_timer < pl->tt_ct)
+    float jump_force = (pl->timer_jump <= s->timer_init_jump) ? s->init_jump_force : s->jump_force;
+    pv->y = -jump_force;
+    if (pl->timer_coyote < s->timer_coyote)
     {
-      pl->jump_timer = 0;
+      pl->timer_jump = 0;
     }
-    pl->coyote_timer = pl->tt_ct;
+    pl->timer_coyote = s->timer_coyote;
   }
 
   // Horzontal and vertical movement for collision has to be handled separately
@@ -375,16 +373,17 @@ scene_update_player(Scene *s, size_t plr, float dt)
   }
 
   // Update coyote and jump timers and update if player can jump
-  pl->jump_timer += dt;
-  pl->coyote_timer += dt;
+  pl->timer_jump += dt;
+  pl->timer_coyote += dt;
+
   if (s->in.up == 0)
   {
-    pl->jump_timer = pl->tt_j;
+    pl->timer_jump = s->timer_jump;
   }
   if (col_d)
   {
-    pl->jump_timer = 0;
-    pl->coyote_timer = 0;
+    pl->timer_jump = 0;
+    pl->timer_coyote = 0;
   }
-  pl->can_jump = col_d || pl->jump_timer < pl->tt_j || pl->coyote_timer < pl->tt_ct;
+  pl->can_jump = col_d || (pl->timer_jump < s->timer_jump) || (pl->timer_coyote < s->timer_coyote);
 }
