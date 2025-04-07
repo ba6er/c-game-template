@@ -85,16 +85,15 @@ scene_init(const char *bricks, size_t w, size_t h)
   scene->w = w;
   scene->h = h;
 
-  scene->plat_speed      = 160.0f;
-  scene->plat_accel      = 700.0f;
-  scene->plat_fric       = 900.0f;
-  scene->grav_jump       = 650.0f;
-  scene->grav_fall       = 980.0f;
-  scene->jump_force      = 240.0f;
-  scene->init_jump_force = 150.0f;
-  scene->timer_jump      = 0.18f;
-  scene->timer_init_jump = 0.05f;
-  scene->timer_coyote    = 0.05f;
+  scene->plat_speed   = 160.0f;
+  scene->plat_accel   = 700.0f;
+  scene->plat_fric    = 900.0f;
+  scene->grav_jump    = 650.0f;
+  scene->grav_fall    = 980.0f;
+  scene->jump_bottom  = 80.0f;
+  scene->jump_top     = 260.0f;
+  scene->timer_jump   = 0.18f;
+  scene->timer_coyote = 0.05f;
 
   DEBUG_TRACE("Scene init begin");
 
@@ -325,8 +324,8 @@ scene_update_player(Scene *s, size_t plr, float dt)
   pv->y += (pv->y > 0 ? s->grav_fall : s->grav_jump) * dt ;
   if (s->in.up && pl->can_jump)
   {
-    float jump_force = (pl->timer_jump <= s->timer_init_jump) ? s->init_jump_force : s->jump_force;
-    pv->y = -jump_force;
+    float jump_linear = pl->timer_jump / s->timer_jump;
+    pv->y = -(s->jump_top * jump_linear + s->jump_bottom * (1 - jump_linear));
     if (pl->timer_coyote < s->timer_coyote)
     {
       pl->timer_jump = 0;

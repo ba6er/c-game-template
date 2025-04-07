@@ -16,8 +16,8 @@ typedef struct {
   int *brick_ids;
 
   float plat_speed, plat_accel, plat_fric;
-  float grav_jump, grav_fall, jump_force, init_jump_force;
-  float timer_jump, timer_init_jump, timer_coyote;
+  float grav_jump, grav_fall, jump_bottom, jump_top;
+  float timer_jump, timer_coyote;
 }
 Scene;
 
