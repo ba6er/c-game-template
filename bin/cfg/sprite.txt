@@ -1,6 +1,0 @@
-brick_c ingame 16 16 16 16
-brick_l ingame 0  16 16 16
-brick_r ingame 32 16 16 16
-plr_s   ingame 0  0  16 16
-plr_w0  ingame 16 0  16 16
-plr_w1  ingame 32 0  16 16
