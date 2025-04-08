@@ -54,28 +54,15 @@ static void scene_update_player(Scene *s, size_t e, float dt);
 uint8_t *
 level_load(const char *file, size_t *width, size_t *height)
 {
-  size_t w, h;
+  FILE *f = fopen(file, "rb");
+  fread(width, sizeof(size_t), 1, f);
+  fread(height, sizeof(size_t), 1, f);
 
-  File f = file_read(file);
-  sscanf(f.data, "%lu %lu", &w, &h);
+  uint8_t *brick_data = malloc(sizeof(uint8_t) * (*width) * (*height));
+  fread(brick_data, sizeof(uint8_t), (*width) * (*height), f);
 
-  size_t data_offset = 0;
-  for (; f.data[data_offset - 1] != '\n'; data_offset++);
+  fclose(f);
 
-  uint8_t *brick_data = malloc(w * h * sizeof(uint8_t));
-  for (int i = 0; i < (w + 1) * h; i++)
-  {
-    if (i % (w + 1) == w)
-    {
-      continue;
-    }
-    brick_data[i - (size_t)(i / (w + 1))] = f.data[data_offset + i];
-  }
-
-  *width = w;
-  *height = h;
-
-  file_free(f);
   return brick_data;
 }
 

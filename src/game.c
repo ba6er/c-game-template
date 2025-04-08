@@ -236,8 +236,8 @@ void
 game_init_scene()
 {
   size_t w, h;
-  uint8_t *brick_data = level_load("lvl/00.txt", &w, &h);
-  level_write("lvl/00", w, h, brick_data);
+  uint8_t *brick_data = level_load("lvl/00", &w, &h);
+  // level_write("lvl/00", w, h, brick_data);
 
   current_scene = scene_init(brick_data, w, h);
   free(brick_data);
