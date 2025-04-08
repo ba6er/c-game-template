@@ -7,6 +7,7 @@
 typedef enum {
   ETag_Player = 1 >> 0,
   ETag_Wall   = 1 >> 1,
+  ETag_Coin   = 1 >> 2,
 }
 ETag;
 
@@ -50,7 +51,7 @@ Component;
 static size_t scene_create_entity(Scene *s, C_Tag *i_tag, C_Pos *i_pos, C_Vel *i_vel, C_Size *i_size, C_Spr *i_spr);
 static void scene_update_player(Scene *s, size_t e, float dt);
 
-char *
+uint8_t *
 level_load(const char *file, size_t *width, size_t *height)
 {
   size_t w, h;
@@ -61,7 +62,7 @@ level_load(const char *file, size_t *width, size_t *height)
   size_t data_offset = 0;
   for (; f.data[data_offset - 1] != '\n'; data_offset++);
 
-  char *brick_data = malloc(w * h * sizeof(char));
+  uint8_t *brick_data = malloc(w * h * sizeof(uint8_t));
   for (int i = 0; i < (w + 1) * h; i++)
   {
     if (i % (w + 1) == w)
@@ -78,8 +79,24 @@ level_load(const char *file, size_t *width, size_t *height)
   return brick_data;
 }
 
+void
+level_write(const char *file, size_t w, size_t h, uint8_t *data)
+{
+  FILE *f = fopen(file, "wb");
+  if (f == NULL)
+  {
+    ERROR_RETURN(, "Can't open file %s", file);
+  }
+
+  fwrite(&w, sizeof(size_t), 1, f);
+  fwrite(&h, sizeof(size_t), 1, f);
+  fwrite(data, sizeof(uint8_t), w * h, f);
+
+  fclose(f);
+}
+
 Scene *
-scene_init(const char *bricks, size_t w, size_t h)
+scene_init(uint8_t *bricks, size_t w, size_t h)
 {
   Scene *scene = calloc(sizeof(Scene), 1);
   scene->w = w;
@@ -91,7 +108,7 @@ scene_init(const char *bricks, size_t w, size_t h)
   scene->grav_jump    = 650.0f;
   scene->grav_fall    = 980.0f;
   scene->jump_bottom  = 80.0f;
-  scene->jump_top     = 260.0f;
+  scene->jump_top     = 250.0f;
   scene->timer_jump   = 0.18f;
   scene->timer_coyote = 0.05f;
 
@@ -324,7 +341,7 @@ scene_update_player(Scene *s, size_t plr, float dt)
   pv->y += (pv->y > 0 ? s->grav_fall : s->grav_jump) * dt ;
   if (s->in.up && pl->can_jump)
   {
-    float jump_linear = pl->timer_jump / s->timer_jump;
+    float jump_linear = sqrtf(pl->timer_jump / s->timer_jump);
     pv->y = -(s->jump_top * jump_linear + s->jump_bottom * (1 - jump_linear));
     if (pl->timer_coyote < s->timer_coyote)
     {

@@ -21,9 +21,10 @@ typedef struct {
 }
 Scene;
 
-char *level_load(const char *file, size_t *w, size_t *h);
+uint8_t *level_load(const char *file, size_t *w, size_t *h);
+void    level_write(const char *file, size_t w, size_t h, uint8_t *data);
 
-Scene *scene_init(const char *bricks, size_t w, size_t h);
+Scene *scene_init(uint8_t *bricks, size_t w, size_t h);
 void scene_free(Scene *s);
 void scene_update(Scene *s, float dt, float ct);
 void scene_render(Scene *s, float dt, float ct);

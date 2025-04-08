@@ -18,7 +18,7 @@ BD := bin
 # Compile Flags, Includes, Libraries
 #CFLAGS  := -D_NO_DEBUG -O2 -std=c99 -pedantic -Wall -m64
 CFLAGS  := -O0 -std=c99 -pedantic -Wall -m64
-LDFLAGS := $(DEPS_OBJECT_FILES) -s -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf
+LDFLAGS := $(DEPS_OBJECT_FILES) -s -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf -lm
 
 SOURCE_FILES := $(wildcard $(SD)/*$(SE))
 OBJECT_FILES := $(SOURCE_FILES:$(SD)/%$(SE)=$(OD)/%$(OE))
