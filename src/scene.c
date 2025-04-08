@@ -135,35 +135,37 @@ scene_init(uint8_t *bricks, size_t w, size_t h)
   int *brick_ids = calloc(w * h, sizeof(int));
 
   // Bricks
-  for (size_t y = 0; y < h; y++)
+  for (size_t i = 0; i < w * h; i++)
   {
-    for (size_t x = 0; x < w; x++)
+    if ((bricks[i] & LevelElement_Brick) == 0)
     {
-      if (bricks[y * w + x] == '.')
-      {
-        brick_ids[y * w + x] = -1;
-        continue;
-      }
-
-      C_Tag b_tag = {ETag_Wall};
-      C_Pos b_pos = {x * 16 + 8, y * 16 + 8};
-      C_Spr b_sprite = {NULL, 1, 1, 0};
-      switch (bricks[y * w + x])
-      {
-      case 'C':
-        b_sprite.spr = "brick_c";
-        break;
-      case 'L':
-        b_sprite.spr = "brick_l";
-        break;
-      case 'R':
-        b_sprite.spr = "brick_r";
-        break;
-      }
-
-      int b = scene_create_entity(scene, &b_tag, &b_pos, NULL, NULL, &b_sprite);
-      brick_ids[y * w + x] = b;
+      brick_ids[i] = -1;
+      continue;
     }
+
+    int x = i % w, y = i / w;
+    C_Tag b_tag = {ETag_Wall};
+    C_Pos b_pos = {x * 16 + 8, y * 16 + 8};
+    C_Spr b_sprite = {NULL, 1, 1, 0};
+
+    int left_n = (x == 0) || (bricks[i - 1] & LevelElement_Brick);
+    int right_n = (x == w - 1) || (bricks[i + 1] & LevelElement_Brick);
+
+    switch((left_n * 1) | (right_n * 2))
+    {
+    case 1:
+      b_sprite.spr = "brick_r";
+      break;
+    case 2:
+      b_sprite.spr = "brick_l";
+      break;
+    default:
+      b_sprite.spr = "brick_c";
+      break;
+    }
+
+    int b = scene_create_entity(scene, &b_tag, &b_pos, NULL, NULL, &b_sprite);
+    brick_ids[i] = b;
   }
   scene->brick_ids = brick_ids;
 

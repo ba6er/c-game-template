@@ -21,6 +21,11 @@ typedef struct {
 }
 Scene;
 
+typedef enum {
+  LevelElement_Brick = 1 >> 0,
+}
+LevelElement;
+
 uint8_t *level_load(const char *file, size_t *w, size_t *h);
 void    level_write(const char *file, size_t w, size_t h, uint8_t *data);
 
