@@ -61,17 +61,7 @@
 
 #endif // Debug
 
-// Files
-
-typedef struct {
-  char *data;
-  unsigned int size;
-}
-File;
-
-File file_read(const char *filename);
-void file_free(File file);
+// Math
 
 int binary_search(const char **arr, size_t n, const char *target);
-
 float lerp(float start, float dest, float step);

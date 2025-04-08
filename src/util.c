@@ -4,45 +4,6 @@
 #include <string.h>
 #include <sys/stat.h>
 
-File
-file_read(const char *filename)
-{
-  File file = {0};
-
-  if (filename == NULL)
-  {
-    ERROR_RETURN(file, "No filename provided");
-  }
-
-  FILE *fp = fopen(filename, "rb");
-  if (fp == NULL)
-  {
-    ERROR_RETURN(file, "Invalid filename %s", filename);
-  }
-
-  struct stat file_stat;
-  stat(filename, &file_stat);
-  if (file_stat.st_size < 0)
-  {
-    ERROR_RETURN(file, "File %s is too large", filename);
-  }
-
-  file.size = file_stat.st_size + 1;
-  file.data = malloc(file.size);
-  file.data[file.size - 1] = 0;
-  fread(file.data, file.size - 1, 1, fp);
-
-  fclose(fp);
-  DEBUG_TRACE("Loaded %s, size: %d", filename, file.size);
-  return file;
-}
-
-void
-file_free(File file)
-{
-  free(file.data);
-}
-
 int
 binary_search(const char **arr, size_t n, const char *target)
 {
