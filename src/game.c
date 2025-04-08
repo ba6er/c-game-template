@@ -238,11 +238,6 @@ game_init_scene()
   size_t w, h;
   uint8_t *brick_data = level_load("lvl/00", &w, &h);
 
-  for (size_t i = 0; i < w * h; i++)
-  {
-    printf("%c", brick_data[i] ? 'C' : '.');
-  }
-
   current_scene = scene_init(brick_data, w, h);
   free(brick_data);
 }
